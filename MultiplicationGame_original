@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Multiplication Game</title>
+<meta name="description" content="A logic game in which you find the digits that will make the multiplication problem correct">
+<meta name="keywords" content="multiplication game, game of multiplication, javascript multiplication game">
+<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+<meta name=viewport content="width=device-width, initial-scale=1">
+
+<script type="text/javascript" language=javascript>
+var letters;
+var revletters = new Array();
+var used = new Array();
+var m1 = 0;
+var m2 = 0;
+var s1 = 0;
+var s2 = 0;
+var p1 = 0;
+var errors = 0;
+var games = 0;
+var totalerrors = 0;
+
+function store(){
+	var cookie = ':' + games + ':' + totalerrors;
+    var expires = new Date();
+    // cookie expires in one year
+    expires.setTime(expires.getTime() + 365 * 24 * 60 * 60 * 1000);
+    document.cookie = (
+        'multiplicationStats' + '=' +
+        escape(cookie) +
+        '; expires=' + expires.toGMTString()
+    );
+}
+
+function load(){
+	var cookie = getCookie('multiplicationStats');
+	if (cookie != null && cookie.length > 1){
+        var stats = cookie.substring(1,cookie.length);
+        if (stats != null){
+            var statsSplit = stats.split(':');
+            var temp;
+            if (statsSplit.length == 2){
+                var re = new RegExp("^([0-9]*)$");
+                if (re.test(statsSplit[0])) games = eval(statsSplit[0]);
+                if (re.test(statsSplit[1])) totalerrors = eval(statsSplit[1]);
+            }
+        }
+    }
+}
+
+function getCookie(name) {
+	var prefix = name + "=";
+	var begin = document.cookie.indexOf("; " + prefix);
+	if (begin == -1) {
+		begin = document.cookie.indexOf(prefix);
+		if (begin != 0) return null;
+	} else {
+		begin += 2;
+	}
+	var end = document.cookie.indexOf(";", begin);
+	if (end == -1)
+	end = document.cookie.length;
+	return unescape(document.cookie.substring(begin + prefix.length, end));
+}
+
+
+function newgame(){
+  errors = 0;
+  shuffle();
+  newproblem();
+  replaceunused();
+  initgrid();
+}
+
+function replaceunused(){
+	for (var i=0; i<10; i++){
+		var letter = letterSNum(''+i);
+		if (!used[letter]){			
+			var num = revletters[letter];
+			letters[num] = num;
+		}	 
+	}
+}
+
+function detectWin(){
+	win = true;
+	for (var i=0; i<10; i++){
+		if (letters[i] >= 'A' && letters[i] <= 'J') win = false;
+	}	
+	if (win) {
+		var s = '';
+		if (errors == 0){
+			s = 'Perfect.';
+		} else if (errors < 3){
+			s = 'Very good.';
+		} else if (errors < 5){
+			s = 'About average.';
+		} else {
+			s = 'You could do better.';
+		}
+		games++;
+		store();
+		alert(s);
+	}
+}
+
+function shuffle(){
+	letters = new Array('A','B','C','D','E','F','G','H','I','J');
+	used['A'] = false;
+	used['B'] = false;
+	used['C'] = false;
+	used['D'] = false;
+	used['E'] = false;
+	used['F'] = false;
+	used['G'] = false;
+	used['H'] = false;
+	used['I'] = false;
+	used['J'] = false;
+	for (var i=0; i<10; i++){
+		var pos = Math.ceil(Math.random()*(10-i)) + i - 1;
+		var temp = letters[i];
+		letters[i] = letters[pos];
+		letters[pos] = temp;
+		revletters[letters[i]] = i;		 
+	}
+}
+function newproblem(){
+  // top number, range 1 to 999
+  m1 = Math.ceil(Math.random()*999);
+  // bottom number, two digits, neither zero
+  var b0 = Math.ceil(Math.random()*9);
+  var b1 = Math.ceil(Math.random()*9);
+  m2 = (b1*10)+b0;
+  // show the work
+  s1 = b0*m1;
+  s2 = b1*m1;
+  // show the "solution"
+  p1 = m1 * m2;
+  draw();
+}
+function draw(){
+	document.game.display.value = toLetters(m1, 3) + '\n'	 
+		+ 'x ' + toLetters(m2, 2) + '\n'
+		+ '=====' + '\n'   
+		+ toLetters(s1, 4) + '\n'	 
+		+ '+' + toLetters(s2, 4) + ' \n'
+		+ '======' + '\n'  
+		+ toLetters(p1, 5) + '\n';
+	/*document.game.debugdisplay.value = m1 + '\n'	 
+		+ 'x ' + m2 + '\n'
+		+ '=====' + '\n'   
+		+ s1 + '\n'	 
+		+ '+' + s2 + ' \n'
+		+ '======' + '\n'  
+		+ p1 + '\n';*/
+	document.game.errors.value=errors;
+	document.game.averrors.value=Math.round(totalerrors/(games+1)*10)/10;
+}
+function toLetters(num, length){
+	var result = '';
+	while (num >= 1){
+		var digit = Math.floor(num%10);
+		result = letters[digit] + result;
+		used[letters[digit]] = true;
+		num /= 10;
+	}
+	while (result.length < length){
+		result = letters[0] + result;
+		used[letters[0]] = true;
+	}
+	return result;
+}
+function press(button){
+	if (document.game.mode[0].checked){		
+		if(button.value == ''){
+			button.value = 'X';
+		} else if(button.value == 'X'){
+			button.value = '*';
+		} else if(button.value == '*'){
+			button.value = '';
+		}
+	} else {
+		if(button.value.length != 2){
+			var letter = letterSNum(button.name.charAt(2));
+			var num = numSNum(button.name.charAt(1));
+			if (letters[num] == letter){
+				for (var i=0; i<10; i++){
+					var b = eval("document.game.t" + i + button.name.charAt(2));
+					if (b.value != 'XX'){
+						b.value = 'ZZ';
+						b.style.backgroundColor='black';
+						b.style.borderColor='black';
+					}
+				}				
+				for (var j=0; j<10; j++){
+					var b1 = eval("document.game.t" + button.name.charAt(1) + j);
+					if (b1.value != 'XX'){
+						b1.value = 'ZZ';
+						b1.style.backgroundColor='black';
+						b1.style.borderColor='black';
+					}
+				}
+				button.value = '**';
+				button.style.backgroundColor='#AAAAFF';
+				button.style.borderColor='#AAAAFF';
+				letters[num] = button.name.charAt(1);
+			} else {
+				errors++;
+				totalerrors++;
+				button.value = 'XX';
+				button.style.backgroundColor='#FF3333';
+				button.style.borderColor='#FF3333';
+				store();			
+			}
+			draw();
+			detectWin();
+		}
+	}
+}
+function initgrid(){
+	for (var i=0; i<10; i++){
+		for (var j=0; j<10; j++){
+			var b = eval("document.game.t" + i + j);
+			b.value = '';
+			b.style.backgroundColor='#D3D3D3';
+			b.style.borderColor='#D3D3D3';
+			if (!used[letterSNum(''+j)]){
+				b.value = 'ZZ';
+				b.style.backgroundColor='black';
+				b.style.borderColor='black';
+			}
+		}
+	}	
+}
+function letterSNum(num){
+	switch(num){
+		case '0': return 'A';
+		case '1': return 'B';
+		case '2': return 'C';
+		case '3': return 'D';
+		case '4': return 'E';
+		case '5': return 'F';
+		case '6': return 'G';
+		case '7': return 'H';
+		case '8': return 'I';
+		default: return 'J';
+	}
+}
+function numSNum(num){
+	switch(num){
+		case '0': return 0;
+		case '1': return 1;
+		case '2': return 2;
+		case '3': return 3;
+		case '4': return 4;
+		case '5': return 5;
+		case '6': return 6;
+		case '7': return 7;
+		case '8': return 8;
+		default: return 9;
+	}
+}
+</script>
+<style type="text/css">
+.problembox {
+  width:1.5in;
+}
+.problem {
+  color:black;
+  background-color:white;
+  border:none;
+  font-family:Courier,monospaced;
+  text-align:right;
+  letter-spacing:.05in;
+  scrollbar-base-color:white;
+  scrollbar-3dlight-color:white; 
+  scrollbar-arrow-color:white;
+  scrollbar-base-color:white;
+  scrollbar-darkshadow-color:white;
+  scrollbar-face-color:white;
+  scrollbar-highlight-color:white;
+  scrollbar-shadow-color:white
+}
+.displayarea {  
+  color:black;
+  background-color:white;
+  border:none;
+}
+.problemline {
+  text-align:right;
+}
+.do {
+  width:1cm;
+  font-height:1cm;
+  background-color:lightgray;
+}
+.error{
+  color:red;
+  font-weight:bold;
+}
+</style>
+
+</head>
+<body onload="load();newgame();">
+
+<noscript><p class=error>You must have JavaScript enabled to play.</p></noscript>
+<form name=game onsubmit="return false;">
+<table border=0 cellspacing=20>
+<tr>
+<td valign=top><textarea rows=8 cols=15 name=display readonly class=problem></textarea></td>
+<td valign=top><h2>Multiplication Game</h2>
+Errors: <input type=text name=errors class=displayarea><br>
+Average errors per game: <input type=text name=averrors class=displayarea><br></td>
+</tr>
+<tr>
+<td>
+<table>
+<tr>
+<th></th>
+<th>0</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+</tr>
+<tr>
+<th>A</th>
+<td><input type=button value='' name=t00 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t10 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t20 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t30 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t40 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t50 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t60 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t70 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t80 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t90 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>B</th>
+<td><input type=button value='' name=t01 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t11 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t21 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t31 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t41 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t51 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t61 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t71 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t81 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t91 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>C</th>
+<td><input type=button value='' name=t02 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t12 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t22 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t32 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t42 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t52 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t62 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t72 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t82 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t92 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>D</th>
+<td><input type=button value='' name=t03 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t13 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t23 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t33 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t43 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t53 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t63 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t73 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t83 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t93 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>E</th>
+<td><input type=button value='' name=t04 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t14 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t24 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t34 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t44 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t54 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t64 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t74 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t84 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t94 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>F</th>
+<td><input type=button value='' name=t05 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t15 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t25 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t35 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t45 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t55 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t65 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t75 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t85 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t95 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>G</th>
+<td><input type=button value='' name=t06 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t16 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t26 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t36 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t46 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t56 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t66 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t76 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t86 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t96 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>H</th>
+<td><input type=button value='' name=t07 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t17 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t27 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t37 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t47 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t57 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t67 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t77 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t87 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t97 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>I</th>
+<td><input type=button value='' name=t08 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t18 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t28 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t38 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t48 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t58 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t68 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t78 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t88 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t98 class=do onclick="press(this);"></td>
+</tr>
+<tr>
+<th>J</th>
+<td><input type=button value='' name=t09 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t19 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t29 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t39 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t49 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t59 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t69 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t79 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t89 class=do onclick="press(this);"></td>
+<td><input type=button value='' name=t99 class=do onclick="press(this);"></td>
+</tr>
+</table>
+</td>
+<td>
+<fieldset>
+<legend>Scratch Paper</legend>
+<textarea rows=12 cols=40 name=scratch></textarea>
+</fieldset>
+</td></tr>
+</table>
+<p><label><input type=radio name=mode value=a> Mark</label>
+<label><input type=radio name=mode checked value=a> Commit</label></p>
+<p><input type=button value='New Game' onclick="newgame();"></p>
+<!--textarea rows=8 cols=15 name=debugdisplay readonly class=problem></textarea-->
+</form>
+<hr>
+
+<h2>Instructions</h2>
+<p>Figure out which digit each letter in the multiplication problem represents.</p>
+
+<hr>
+
+<h3>License</h3>
+
+<p>This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.</p>
+
+<p>This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the
+<a href="http://www.gnu.org/copyleft/gpl.html">GNU
+General Public License</a> for more details.</p>
+
+<div style="padding:0.2cm;"><a href="http://ostermiller.org/calc/">More converters, calculators, and other JavaScript goodies</a></div>
+<div style="padding:0.2cm;text-align:right;"><a href="http://ostermiller.org/">ostermiller.org</a> (<a href="http://ostermiller.org/siteindex.html">site index</a>)</div>
+<div style="padding:0.2cm;"><p>Copyright <a href="http://ostermiller.org/contact.pl?regarding=JavaScript+Multiplication+Game" class=mail>Stephen Ostermiller</a> 2002-2020</p></div>
+</body>
+</html>
